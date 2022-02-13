@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "preview": "zenn preview"
+    "preview": "zenn preview",
+    "new": "npx zenn new:article"
   },
   "keywords": [],
   "author": "",
