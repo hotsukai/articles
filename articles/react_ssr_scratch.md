@@ -153,6 +153,7 @@ export default createHtml;
 - Point③ではページのReactコンポーネントをHTMLにレンダーして、さらに文字列にしている。 
   - この時、DBから取得した情報(`hoge`とか)がHTMLに埋め込まれていることがわかる。
 - `ReactRouter`の`StaticRouter`にurlを渡すことで、正しいページのコンポーネントをレンダリングしてもらうことができる。
+- クライアントサイドで実行されるJSは`dist/public/client.js`にビルドされるようになっている。
 
 Point③の結果
 ```html
@@ -179,11 +180,140 @@ Point④の結果
     </body>
   </html>
 ```
-## 思ったこと
+
+## 実装(クライアントサイド編)
+### `index.tsx`
+クライアントサイドのエントリーポイントになるファイルです。
+```tsx
+import * as React from "react";
+import ReactDOM from "react-dom";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+
+// Point⑤
+ReactDOM.hydrate(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>,
+  document.getElementById("root")
+);
+```
+Point⑤では`ReactDOM.hydrate`により、root配下のHTML(SSRで作ったやつ)にイベントリスナーを設定してReactが動くようになります。
+
+### `App.tsx`
+Reactアプリ本体です。
+後述の`PageWrapper`でページコンポーネントをWrapすることで
+- ページコンポーネント側(`pages/index.tsx`, `pages/detail.tsx`)がSSRかCSRかに関心を保つ必要を無くしています。\
+- `PageWrapper`にkeyをもたせることでクライアント側でルートが変わったときに強制的に`PageWrapper`を再レンダリングしています。(`PageWrapper`はそのままでページコンポーネントだけをレンダリングできると良さそう)
+```tsx
+import React, { VFC } from "react";
+import { Route, Routes } from "react-router-dom";
+import routes from "../routes";
+import PageWrapper from "./PageWrapper";
+
+const App: VFC<{ serverData?: any }> = ({ serverData = null }) => {
+  return (
+    <Routes>
+      {Object.keys(routes).map((key) => {
+        const { path, component } = routes[key];
+        return (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <PageWrapper
+                key={path}
+                PageComponent={component}
+                serverData={serverData}
+              />
+            }
+          />
+        );
+      })}
+    </Routes>
+  );
+};
+
+export default App;
+```
+
+### `PageWrapper.tsx`
+最後に紹介するファイルです〜
+これが肝かつ、リファクタリングのやりがいのあるファイルだと思いますw
+前述の通り、
+- SSRでHTMLを作ってる時
+- SSR後にクライアント側でReactをhydrateしてイベントリスナーをつけた時
+- クライアント側でページ遷移した時(CSR時)
+
+の3つの状態を吸収して配下のページたちは、ページで必要なデータとローディング中か否かだけを意識すればいいようにします。
+
+
+```tsx
+import axios from "axios";
+import React, { useEffect, useRef, useState, VFC } from "react";
+import { useLocation } from "react-router-dom";
+
+type Props = {
+  serverData?: any;
+  PageComponent: VFC<{ data?: any; isLoading: boolean }>;
+};
+const PageWrapper: VFC<Props> = ({ serverData, PageComponent }) => {
+  const [data, setData] = useState(() => {
+    if (typeof document !== "undefined") { // クライアントサイド
+      const dataPool = (document.getElementById("root") as HTMLElement).dataset
+        .react;
+      const unsafeData = dataPool ? JSON.parse(dataPool) : null;
+      (document.getElementById("root") as HTMLElement).dataset.react = "";
+      return unsafeData;
+    } else {// サーバーサイド
+      return serverData; 
+    }
+  });
+  const isDataExist = !!data;
+
+  const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(!isDataExist);
+
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (isDataExist) return;
+    const f = async () => {
+      setIsLoading(true);
+      const result = await axios
+        .get(`/api${pathname}`)
+        .then((data) => data.data)
+        .catch((error) => {
+          console.warn(error);
+          setIsError(true);
+          return null;
+        });
+      setData(result);
+      setIsLoading(false);
+    };
+    f();
+  }, [pathname, isDataExist]);
+  if (isError) return <p>エラーが発生しました。</p>;
+  return <PageComponent data={data} isLoading={isLoading} />;
+};
+
+export default PageWrapper;
+```
+- Point⑥ではページで使うデータの初期化をしています。データの取得は以下のとおりです。
+
+|              | SSRでHTMLを作ってる時         | hydrate時                | CSR時     |
+| ------------ | ----------------------------- | ------------------------ | --------- |
+| データ取得元 | propsで受け取った`serverData` | `#root`のdata attributes | APIを叩く |
+
+
+## 思ったこと(ポエム)
 - `getServerSideProps`が重い場合、最初にユーザーに何かが表示されるまでの時間(FCP)が低下するので、スケルトンを表示してクライアント側でFetchするみたいに工夫したほうが良さそう。
 - Link先を予めFetchしておくNext.jsすごい
 - Next.jsしかり、RailsやPHPしかりSSRで毎回HTMLを生成するのリクエスト数が増えると大変だよね。
   - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
+- なんとなくNext.jsやGatsby.jsを使っていたけど自分で作ってみると学びがあるしフレームワークのありがたさを再認識できますね。
 
 ## 参考
 https://ui.dev/react-router-server-rendering
+https://ja.reactjs.org/docs/react-dom.html#hydrate
+https://reactrouter.com/docs/en/v6/guides/ssr
