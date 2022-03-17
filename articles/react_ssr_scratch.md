@@ -3,12 +3,13 @@ title: "React.jsのSSRをTypeScriptで自前で実装してみた"
 emoji: "👋"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ['React','SSR','TypeScript','reactrouter']
-published: false
+published: true
 ---
 
 # この記事は？
-- ReactのSSRを自前で実装して理解を深めようとした、せっかくなのでその記録を記事にもしておく。
-- ReactRouterを使って複数ページのSSRをしている新しい日本語記事がなかった。
+- ReactのSSR乗り会を深めるために自前で実装してみました。
+  - せっかくなのでその記録を記事にまとめました。
+- ReactRouterを使って複数ページのSSRをしている新しい日本語記事がなかったというのも記事化の理由の一つです。
 
 この記事のソースコードは[こちら](https://github.com/hotsukai/SSR-practice)です。
 
@@ -27,13 +28,13 @@ published: false
   1. サーバーサイドレンダリング(SSR)して完成されたHTMLをクライアントに返却。
   2. クライアントサイドで完成されたHTMLにイベントリスナーを設定(hydrate)
 - ページ遷移時
-  1. 必要な情報をクライアント側からREST APIを叩いて取得。
+  1. 新しいページで必要な情報をクライアント側からREST APIを叩いて取得。
   2. クライアントサイドレンダリング(CSR)する。
 
 Next.jsなどで使われている標準的なSSRの挙動になったと思います。
 
 
-## 実装(サーバーサイド編)
+## 実装
 ### `src/routes.ts`
 サーバーサイド・クライアントサイドで共通のRouteを記述するファイル。
 
@@ -76,6 +77,7 @@ export default routes
   - `component`: ページと対応するコンポーネント
   - `getServerSideProps`: SSR時と, ページ遷移してCSR時に情報を取得する。( Next.jsを真似ました )
 
+## 実装(サーバーサイド編)
 ### `src/server/index.ts`
 サーバーサイドのエンドポイントになるファイルです。
 SSRのエンドポイントだけでなくCSRするときに情報取得で使うAPIエンドポイントもあります。
@@ -150,8 +152,8 @@ const createHtml = async ({ url, pageData }: Props) => {
 };
 export default createHtml;
 ```
-- Point③ではページのReactコンポーネントをHTMLにレンダーして、さらに文字列にしている。 
-  - この時、DBから取得した情報(`hoge`とか)がHTMLに埋め込まれていることがわかる。
+- Point③ではページのReactコンポーネントをHTMLにレンダーして、さらに文字列にしています。 
+  - この時、DBから取得した情報(`hoge`とか)がHTMLに埋め込まれていることが下の結果からわかる。
 - `ReactRouter`の`StaticRouter`にurlを渡すことで、正しいページのコンポーネントをレンダリングしてもらうことができる。
 - クライアントサイドで実行されるJSは`dist/public/client.js`にビルドされるようになっている。
 
@@ -160,13 +162,13 @@ Point③の結果
   <div><h1>index page</h1><a href="/todos/id1"><div style="border-radius:4px;border:1px solid black;padding:1rem;margin:0.5rem 0"><h2>hoge</h2><p>hogehoge</p></div></a><a href="/todos/id2"><div style="border-radius:4px;border:1px solid black;padding:1rem;margin:0.5rem 0"><h2>fuga</h2><p>fugafuga</p></div></a><form><label for="title">title<input type="text" id="title" value=""/></label><label for="detail">detail<input type="text" id="detail" value=""/></label><button>submit</button></form></div></div>
 ```
 
-- Point④では2つのことをやっている
+- Point④では2つのことをやっています。
   - クライアント側でReactをマウントできるようにする。
     - ページコンポーネントをReactをマウントするHTML Elementである`#root`配下に置く。
     - React側でページに埋め込んだ情報を扱えるように`#root`のdata attributesにページ情報のJSONを設定。
   - 完全なHTMLとしてレスポンスを返すこと。
     - メタ情報を追加など。
-    - (HelmetとかでReact側でHeadを書き換えることはまだ考えていない..)
+    - (HelmetとかでReact側でHeadを書き換えることはまだ考えていないです..)
 
 Point④の結果
 ```html
@@ -203,7 +205,7 @@ Point⑤では`ReactDOM.hydrate`により、root配下のHTML(SSRで作ったや
 ### `App.tsx`
 Reactアプリ本体です。
 後述の`PageWrapper`でページコンポーネントをWrapすることで
-- ページコンポーネント側(`pages/index.tsx`, `pages/detail.tsx`)がSSRかCSRかに関心を保つ必要を無くしています。\
+- ページコンポーネント側(`pages/index.tsx`, `pages/detail.tsx`)がSSRかCSRかに関心を保つ必要を無くしています。
 - `PageWrapper`にkeyをもたせることでクライアント側でルートが変わったときに強制的に`PageWrapper`を再レンダリングしています。(`PageWrapper`はそのままでページコンポーネントだけをレンダリングできると良さそう)
 ```tsx
 import React, { VFC } from "react";
@@ -238,7 +240,7 @@ export default App;
 ```
 
 ### `PageWrapper.tsx`
-最後に紹介するファイルです〜
+最後に紹介するファイルです。
 これが肝かつ、リファクタリングのやりがいのあるファイルだと思いますw
 前述の通り、
 - SSRでHTMLを作ってる時
@@ -307,11 +309,11 @@ export default PageWrapper;
 
 
 ## 思ったこと(ポエム)
-- `getServerSideProps`が重い場合、最初にユーザーに何かが表示されるまでの時間(FCP)が低下するので、スケルトンを表示してクライアント側でFetchするみたいに工夫したほうが良さそう。
-- Link先を予めFetchしておくNext.jsすごい
-- Next.jsしかり、RailsやPHPしかりSSRで毎回HTMLを生成するのリクエスト数が増えると大変だよね。
-  - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
+- Link先を予めFetchしておくNext.jsすごい！！
 - なんとなくNext.jsやGatsby.jsを使っていたけど自分で作ってみると学びがあるしフレームワークのありがたさを再認識できますね。
+- 自前実装に限った話ではなくSSR全般に言えることですが、`getServerSideProps`が重い場合、最初にユーザーに何かが表示されるまでの時間(FCP)が低下するので、スケルトンを表示してクライアント側でFetchするみたいに工夫したほうが良さそうです。
+- Next.js / Nuxt.jsのようなSSR+CSRでも、RailsやPHPのような古典的SSR(なんか名前があった気がする)でも言えるけど、リクエストのたびにHTMLを生成するのは大変...
+  - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
 
 ## 参考
 https://ui.dev/react-router-server-rendering
