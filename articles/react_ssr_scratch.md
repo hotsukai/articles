@@ -1,6 +1,6 @@
 ---
 title: "React.jsのSSRをTypeScriptで自前で実装してみた"
-emoji: "👋"
+emoji: "💡"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ['React','SSR','TypeScript','reactrouter']
 published: true
@@ -75,7 +75,7 @@ export default routes
   - `path`: URLと対応
   - `buildPath`: Linkなどで使うためにパスを生成する。
   - `component`: ページと対応するコンポーネント
-  - `getServerSideProps`: SSR時と, ページ遷移してCSR時に情報を取得する。( Next.jsを真似ました )
+  - `getServerSideProps`: ページで必要な情報を取得する関数です。SSR時とCSRでページ遷移するときに呼ばれます。( Next.jsを真似ました )
 
 ## 実装(サーバーサイド編)
 ### `src/server/index.ts`
