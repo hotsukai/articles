@@ -7,7 +7,7 @@ published: true
 ---
 
 # この記事は？
-- ReactのSSR乗り会を深めるために自前で実装してみました。
+- ReactのSSRの理解を深めるために自前で実装してみました。
   - せっかくなのでその記録を記事にまとめました。
 - ReactRouterを使って複数ページのSSRをしている新しい日本語記事がなかったというのも記事化の理由の一つです。
 
@@ -314,6 +314,7 @@ export default PageWrapper;
 - 自前実装に限った話ではなくSSR全般に言えることですが、`getServerSideProps`が重い場合、最初にユーザーに何かが表示されるまでの時間(FCP)が低下するので、スケルトンを表示してクライアント側でFetchするみたいに工夫したほうが良さそうです。
 - Next.js / Nuxt.jsのようなSSR+CSRでも、RailsやPHPのような古典的SSR(なんか名前があった気がする)でも言えるけど、リクエストのたびにHTMLを生成するのは大変...
   - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
+  - ビルド時に一回だけ`getServerSideProps`をして結果をHTMLファイルにしたらSSGも実装できそう。
 
 ## 参考
 https://ui.dev/react-router-server-rendering
