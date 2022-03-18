@@ -260,13 +260,16 @@ type Props = {
   PageComponent: VFC<{ data?: any; isLoading: boolean }>;
 };
 const PageWrapper: VFC<Props> = ({ serverData, PageComponent }) => {
+  // Point⑥
   const [data, setData] = useState(() => {
-    if (typeof document !== "undefined") { // クライアントサイド
+    if (typeof document !== "undefined") { 
+      // クライアントサイド
       const dataPool = (document.getElementById("root") as HTMLElement).dataset
         .react;
-      const unsafeData = dataPool ? JSON.parse(dataPool) : null;
+      const initialData = dataPool ? JSON.parse(dataPool) : null;
+      // ページ遷移後に前のページの初期データを参照しないように消す。
       (document.getElementById("root") as HTMLElement).dataset.react = "";
-      return unsafeData;
+      return initialData;
     } else {// サーバーサイド
       return serverData; 
     }
@@ -280,6 +283,7 @@ const PageWrapper: VFC<Props> = ({ serverData, PageComponent }) => {
 
   useEffect(() => {
     if (isDataExist) return;
+    // データがないときにはAPIを叩いてデータ取得
     const f = async () => {
       setIsLoading(true);
       const result = await axios
