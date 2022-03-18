@@ -317,6 +317,11 @@ export default PageWrapper;
   - ビルド時に一回だけ`getServerSideProps`をして結果をHTMLファイルにしたらSSGも実装できそう。
 
 ## 参考
+React + React-RouterでSSRするぞ！　という英語記事。めちゃくちゃ参考にさせていただきました。
 https://ui.dev/react-router-server-rendering
+
+React.js本家のドキュメント
 https://ja.reactjs.org/docs/react-dom.html#hydrate
+
+React Router本家のドキュメント
 https://reactrouter.com/docs/en/v6/guides/ssr
