@@ -17,13 +17,13 @@ published: false
 
 ## 環境
 - RailsでERBを返却するMPA
-- 諸事情により[Vite Rails](https://vite-ruby.netlify.app/guide/rails.html)は採用したくなかった。
+- 諸事情により[Vite Ruby](https://vite-ruby.netlify.app/guide/rails.html)を選定できない。
 
 ## 結論
 [公式Doc(バックエンドとの統合)](https://ja.vitejs.dev/guide/backend-integration.html)に記載されている。
 HMRをするためには読み込みたいファイルの他に、
 - `@vite/client`を読み込み
-- (`@vitejs/plugin-react`を使っている場合には)`@react-refresh`を読み込んで初期化
+- `@react-refresh`を読み込んで初期化(`@vitejs/plugin-react`を使っている場合のみ)
 
 する必要がある。
 
@@ -132,3 +132,28 @@ if (!window.__vite_plugin_react_preamble_installed__) {
 だいぶ遠回りしてしまった感。
 :::
 
+
+
+### ページ全体がリロードされる
+Pluginに`@vitejs/plugin-react`を入れていなかった。
+プラグインを入れることで解消。
+
+エントリーポイントがtsx以外のファイルを編集したときには、依然としてフルリロードがされてしまう。
+::::details リロードの理由の推測
+:::message
+以下は十分に検証されていない曖昧な推測です
+:::
+
+Vanilla JSの[公式サンプル](https://vite.new/)でも変更時にページ全体がリロードされたので、そういうものかもしれない。
+
+ViteサーバーとのWebSocketのやり取り を見ると `full-reload`というレスポンスが帰ってきてるのがわかる。
+![](/images/vite_with_rails/fullreload.png)
+
+このレスポンスが帰ってきたとき、vite/clientはページをリロードするようだ。
+https://github.com/vitejs/vite/blob/6c4bf266a0bcae8512f6daf99dff57a73ae7bcf6/packages/vite/src/client/client.ts#L250-L267
+
+このレスポンスは、vite serverでbundleの依存関係が変わったり失敗するとされる？らしい。
+https://github.com/vitejs/vite/blob/6c4bf266a0bcae8512f6daf99dff57a73ae7bcf6/packages/vite/src/node/optimizer/optimizer.ts#L318-L329
+
+[公式Doc HMR API](https://ja.vitejs.dev/guide/api-hmr.html)を参考にHMRに対応した実装をする必要があるのかな？
+::::
