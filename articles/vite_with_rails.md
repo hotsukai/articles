@@ -3,13 +3,15 @@ title: "Ruby on Rails + Vite + React でHMRをする方法"
 emoji: "💎"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["vite", "rails", "react"]
-published: false
+published: true
 ---
 
 
 
 ## この記事は？
-- Ruby on Rails + Vite でReactをHMRをするときにハマりまくったのでそのメモ。
+Ruby on Rails + Vite でReactをHMRできるようにするときにハマりまくった。
+でも調べる過程で色々学びがあったのでそのメモ。
+踏み込んだ日本語記事もなかったので、誰かやいつかの自分の役に立つかもしれない
 
 :::message
 わかりやすさのために記事中のコードは最低限に省略しています。
