@@ -17,7 +17,7 @@ Ruby on Rails + Vite でReactをHMRできるようにするときにハマりま
 わかりやすさのために記事中のコードは最低限に省略しています。
 :::
 
-## 環境
+## 背景
 - RailsでERBを返却するMPA
 - 諸事情により[Vite Ruby](https://vite-ruby.netlify.app/guide/rails.html)を選定できない。
 
