@@ -16,7 +16,7 @@ const a = 1
 const b = 'Hello World!!'
 const c: string | null = null
 
-const good = {
+const obj = {
   a, b,
   ...(c && { c }),
 }
@@ -24,14 +24,6 @@ const good = {
  * {
  *    a: 1,
  *    b: 'Hello World!!',
- * }
-*/
-const notGood = {a, b, c} 
-/**
- * {
- *    a: 1,
- *    b: 'Hello World!!',
- *    c: null,
  * }
 */
 ```
