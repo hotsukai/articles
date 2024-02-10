@@ -1,5 +1,5 @@
 ---
-title: "Ruby on Rails + Vite + React でHMRをする方法"
+title: "Vite Rubyを使わずRails+ReactをHMRしてみた"
 emoji: "💎"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["vite", "rails", "react"]
