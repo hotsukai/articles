@@ -9,6 +9,7 @@ published: true
 # この記事は？
 - ReactのSSRの理解を深めるために自前で実装してみました。
   - せっかくなのでその記録を記事にまとめました。
+  - ※ App Router以前のPage Routerの内容です。
 - ReactRouterを使って複数ページのSSRをしている新しい日本語記事がなかったというのも記事化の理由の一つです。
 
 この記事のソースコードは[こちら](https://github.com/hotsukai/SSR-practice)です。
@@ -25,10 +26,10 @@ published: true
 ## 作ったもの
 ![](/images/react_ssr_scratch/about.gif)
 - 初回リクエスト時
-  1. サーバーサイドレンダリング(SSR)して完成されたHTMLをクライアントに返却。
-  2. クライアントサイドで完成されたHTMLにイベントリスナーを設定(hydrate)
+  1. サーバーサイドレンダリング(SSR)してたHTMLをクライアントに返却。
+  2. サーバーから受け取ったHTMLにクライアントサイドでイベントリスナーを設定(hydrate)
 - ページ遷移時
-  1. 新しいページで必要な情報をクライアント側からREST APIを叩いて取得。
+  1. 新しいページで必要な情報をクライアント側からWEB APIを叩いて取得。
   2. クライアントサイドレンダリング(CSR)する。
 
 Next.jsなどで使われている標準的なSSRの挙動になったと思います。
@@ -109,7 +110,7 @@ Object.keys(routes).forEach(key => {
 })
 
 app.get('/*', async (req, res) => {
-  res.send("Page NotFound")
+  res.status(404).send("Page NotFound")
 })
 
 app.listen(3000)
@@ -152,10 +153,10 @@ const createHtml = async ({ url, pageData }: Props) => {
 };
 export default createHtml;
 ```
-- Point③ではページのReactコンポーネントをHTMLにレンダーして、さらに文字列にしています。 
+- Point③ではページのReactコンポーネントをHTML文字列にレンダーしている。 
   - この時、DBから取得した情報(`hoge`とか)がHTMLに埋め込まれていることが下の結果からわかる。
 - `ReactRouter`の`StaticRouter`にurlを渡すことで、正しいページのコンポーネントをレンダリングしてもらうことができる。
-- クライアントサイドで実行されるJSは`dist/public/client.js`にビルドされるようになっている。
+- クライアントサイドで実行されるJS`dist/public/client.js`にビルドされるようになっている。
 
 Point③の結果
 ```html
@@ -241,7 +242,6 @@ export default App;
 
 ### `PageWrapper.tsx`
 最後に紹介するファイルです。
-これが肝かつ、リファクタリングのやりがいのあるファイルだと思いますw
 前述の通り、
 - SSRでHTMLを作ってる時
 - SSR後にクライアント側でReactをhydrateしてイベントリスナーをつけた時
@@ -319,6 +319,7 @@ export default PageWrapper;
 - Next.js / Nuxt.jsのようなSSR+CSRでも、RailsやPHPのような古典的SSR(なんか名前があった気がする)でも言えるけど、リクエストのたびにHTMLを生成するのは大変...
   - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
   - ビルド時に一回だけ`getServerSideProps`をして結果をHTMLファイルにしたらSSGも実装できそう。
+- この実装だとrouteが変わるたびにPageWrapperが再レンダリングされる(=データ取得が走る)。データをキャッシュできるようにすると良さそう。cache-timeを制御するのとかもやればできる。
 
 ## 参考
 React + React-RouterでSSRするぞ！　という英語記事。めちゃくちゃ参考にさせていただきました。
