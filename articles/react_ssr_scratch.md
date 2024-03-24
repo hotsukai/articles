@@ -316,7 +316,7 @@ export default PageWrapper;
 - Link先を予めFetchしておくNext.jsすごい！！
 - なんとなくNext.jsやGatsby.jsを使っていたけど自分で作ってみると学びがあるしフレームワークのありがたさを再認識できますね。
 - 自前実装に限った話ではなくSSR全般に言えることですが、`getServerSideProps`が重い場合、最初にユーザーに何かが表示されるまでの時間(FCP)が低下するので、スケルトンを表示してクライアント側でFetchするみたいに工夫したほうが良さそうです。
-- Next.js / Nuxt.jsのようなSSR+CSRでも、RailsやPHPのような古典的SSR(なんか名前があった気がする)でも言えるけど、リクエストのたびにHTMLを生成するのは大変...
+- Next.js / Nuxt.jsのようなSSR+CSRでも、RailsやPHPのような古典的SSR(MPA)でも言えるけど、リクエストのたびにHTMLを生成するのは大変...
   - よく言われるように、内容が変わらないならば事前レンダリングしておいたほうがやっぱいいんだなぁ。
   - ビルド時に一回だけ`getServerSideProps`をして結果をHTMLファイルにしたらSSGも実装できそう。
 - この実装だとrouteが変わるたびにPageWrapperが再レンダリングされる(=データ取得が走る)。データをキャッシュできるようにすると良さそう。cache-timeを制御するのとかもやればできる。
