@@ -4,6 +4,7 @@ emoji: "🔄"
 type: "tech"
 topics: ["nextjs", "react", "tanstackquery", "typescript", "frontend"]
 published: false
+publication_name: sirok
 ---
 
 # Next.js App RouterとTanStack Queryの連携パターン比較
