@@ -274,6 +274,52 @@ export default function UserClient({ userId }: { userId: string }) {
 1. **DRYな実装**: クエリの定義とデータ取得ロジックが一元管理されるため、重複が減少します
 2. **型安全性**: TypeScriptを使用することで、クエリキーとデータの型を厳密に定義できます
 
+## パフォーマンスと適材適所の重要な考慮点
+
+実際のアプリケーション開発ではさらに以下の点を考慮することが重要です：
+
+### prefetchのリフトアップによるパフォーマンス最適化
+
+prefetchの`await`をどこで行うかは重要なパフォーマンス最適化ポイントです。
+
+```tsx
+// 非効率なパターン：page.tsx全体がブロックされる
+export default async function Page() {
+  await fetchUserQuery(userId).prefetch(queryClient)
+  await fetchPostsQuery(userId).prefetch(queryClient)
+  
+  return <Layout>...</Layout>
+}
+```
+
+以下のようにリフトアップすることでFCPが改善できます：
+
+```tsx
+// 効率的なパターン：必要な部分だけブロック
+export default function Page() {
+  return (
+    <Layout>
+      <Suspense fallback={<UserSkeleton />}>
+        <UserContainer />  {/* ここでawait prefetchする */}
+      </Suspense>
+      <Suspense fallback={<PostsSkeleton />}>
+        <PostsContainer />  {/* ここでawait prefetchする */}
+      </Suspense>
+    </Layout>
+  )
+}
+```
+
+データを使用する限り末端コンポーネントで`await prefetch`して、親コンポーネントでSuspenseでラップすることで、ページ全体のレスポンスを高速化できます。
+
+### 静的データと動的データの区別
+
+すべてのデータをTanStack Queryで管理すべきではありません：
+
+- **静的なマスターデータ**（CMS記事、商品カタログなど）：TanStack Queryを通す意味は少なく、SSR時のfetch結果をそのまま使用する方が効率的です
+- **動的データ**（ユーザー操作による状態変化など）：TanStack Queryを活用すべき領域です
+
+例えば、ECサイトであれば商品データは通常の`fetch`+`cache: 'force-cache'`を使用し、カートやお気に入り情報などユーザー固有のデータにTanStack Queryを適用するのが適切です。
 
 ## まとめ
 
