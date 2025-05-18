@@ -9,7 +9,7 @@ publication_name: sirok
 
 # Next.js App RouterとTanStack Queryの連携パターン比較
 
-Next.js App RouterとTanStack Query（旧React Query）は、現代のReactアプリケーション開発において非常に強力なツールの組み合わせです。しかし、この2つを効果的に連携させるには、それぞれの仕組みを理解し、適切に統合する必要があります。
+Next.js App RouterとTanStack Queryは、現代のReactアプリケーション開発において非常に強力なツールの組み合わせです。しかし、この2つを効果的に連携させるには、それぞれの仕組みを理解し、適切に統合する必要があります。
 
 この記事では、Next.js App RouterとTanStack Queryを組み合わせる際の**複数の連携パターンを比較検討**し、それぞれの手法のメリット・デメリットを解説します。
 基本的なセットアップ方法については公式ドキュメントのほか、日本語記事もいくつか存在するため、そちらを参考にしてください。
