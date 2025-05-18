@@ -1,5 +1,5 @@
 ---
-title: "Next.js App RouterとTanStack Queryの連携パターン比較 - SSRとクライアント間の効果的なデータ共有"
+title: "Next.js App RouterとTanStack Queryの連携の実践"
 emoji: "🔄"
 type: "tech"
 topics: ["nextjs", "react", "tanstackquery", "typescript", "frontend"]
