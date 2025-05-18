@@ -2,7 +2,7 @@
 title: "Next.js App RouterとTanStack Queryの連携の実践"
 emoji: "🔄"
 type: "tech"
-topics: ["nextjs", "react", "tanstackquery", "typescript", "frontend"]
+topics: ["nextjs", "react", "TanstackQuery", "typescript", "frontend"]
 published: false
 publication_name: sirok
 ---
@@ -26,11 +26,17 @@ SPAでTanStack Queryを使用する場合、基本的な流れは以下のよう
 5. データが取得されると、コンポーネントが再レンダリングされます
 
 ```tsx
+// データの取得関数
+async function fetchUser(userId) {
+  const res = await fetch(`https://api.example.com/users/${userId}`);
+  return res.json();
+}
+
 // SPAでの基本的なTanStack Queryの使用例
 function UserProfile({ userId }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['user', userId],
-    queryFn: () => fetchUserData(userId),
+    queryFn: () => fetchUser(userId),
   });
 
   if (isLoading) return <div>Loading...</div>;
@@ -44,43 +50,40 @@ function UserProfile({ userId }) {
 
 重要なポイントとして、SSRを行う場合のuseQueryの挙動を理解する必要があります。
 
-1. **SSR中（サーバー上）**では`useQuery`フックは処理されますが、`queryFn`は実行されません。これはTanStack Queryの内部実装において、データ取得の処理が`useEffect`フック内で行われているためです。
-2. Reactの`useEffect`はクライアントサイドのライフサイクルフックであり、サーバーサイドレンダリング中には実行されません。
+1. **SSR中（サーバー上）**: `useQuery`フックは処理されますが、`queryFn`は実行されません。これはTanStack Queryの内部実装において、データ取得の処理が`useEffect`フック内で行われているためです。
+Reactの`useEffect`はクライアントサイドのライフサイクルフックであり、サーバーサイドレンダリング中には実行されません。
 
 :::details より詳細な解説
-| ステップ                                | 何が起きるか                                                                                             | どこで止まるか                                   |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1. **レンダー**（`<Component>` がサーバーで実行） | `useQuery` → `useBaseQuery` が `QueryObserver` を生成し、[`observer.getOptimisticResult()`](https://github.com/TanStack/query/blob/main/packages/react-query/src/useBaseQuery.ts#L93) で「キャッシュから取ってきたデータ(存在しない)」を返す | まだネットワーク処理なし                              |
-| 2. **エフェクト登録**                      | `useBaseQuery` の `React.useEffect` 内で `observer.setOptions()` を呼び出すコードが *予約* される                   | **SSR では `useEffect` が実行されない**ため、ここが呼ばれない |
-| 3. **フェッチ開始トリガ**                    | `observer.setOptions()` が呼ばれれば `executeFetch()` → `Query.fetch()` → `queryFn()` というチェーンが走る         | エフェクトが呼ばれないのでチェーンが開始しない                   |
-| 4. **結果**                           | Query は `fetchStatus: 'paused'`（または `'idle'`）のまま。サーバー HTML にはデータが入らず、クライアント水和後に初めてフェッチが動く          | —                                         |
+| ステップ                                          | 何が起きるか                                                                                                                                                                                                                                 | どこで止まるか                                                |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1. **レンダー**（`<Component>` がサーバーで実行） | `useQuery` → `useBaseQuery` が `QueryObserver` を生成し、[`observer.getOptimisticResult()`](https://github.com/TanStack/query/blob/main/packages/react-query/src/useBaseQuery.ts#L93) で「キャッシュから取ってきたデータ(存在しない)」を返す | まだネットワーク処理なし                                      |
+| 2. **エフェクト登録**                             | `useBaseQuery` の `React.useEffect` 内で `observer.setOptions()` を呼び出すコードが *予約* される                                                                                                                                            | **SSR では `useEffect` が実行されない**ため、ここが呼ばれない |
+| 3. **フェッチ開始トリガ**                         | `observer.setOptions()` が呼ばれれば `executeFetch()` → `Query.fetch()` → `queryFn()` というチェーンが走る                                                                                                                                   | エフェクトが呼ばれないのでチェーンが開始しない                |
+| 4. **結果**                                       | Query は `fetchStatus: 'paused'`（または `'idle'`）のまま。サーバー HTML にはデータが入らず、クライアント水和後に初めてフェッチが動く                                                                                                        | —                                                             |
 
 :::
 2. **ハイドレーション後（クライアント上）**: クライアントサイドでアプリケーションがハイドレーションされると、`useEffect`フックが実行され、`useQuery`が再び評価されます。このとき`initialData`が提供されていなければ、キャッシュヒットしないため `queryFn`が実行されてデータ取得が始まります。
 
-この仕組みにより、useQueryを含むクライアントコンポーネントがSSRされた場合でも、サーバーから返却されるHTMLは「Loading...」状態のものになります。このためページのメインコンテンツがない状態でSSRが終わってしまうため、SSの良さ(LCP, CLS)を享受しきれていません。
+この仕組みにより、useQueryを含むクライアントコンポーネントがSSRされた場合でも、サーバーから返却されるHTMLは「Loading...」状態のものになります。このためページのメインコンテンツがない状態でSSRが終わってしまうため、SSRの良さ(LCP, CLS)を享受しきれていません。
 この問題は以降のセクションで解決していきます。
 
 
-## AppRouter x TanstackQuery InitialData編
+## [App Router x Tanstack Query] InitialData編
 
 Next.js App RouterとTanStack Queryを組み合わせる最初のアプローチは、`initialData`を使用する方法です。この方法では、サーバーサイドで取得したデータをクライアントサイドのTanStack Queryに初期データとして渡します。
 
 このアプローチは、App RouterとTanStack Queryを連携させる方法の中で**最もシンプルで実装が容易**です。
 ユーザーは初回表示時から完全なコンテンツを見ることができ、クライアント側での「Loading...」表示を回避できます。
 
+https://tanstack.com/query/latest/docs/framework/react/guides/ssr#get-started-fast-with-initialdata
+
 ### initialDataの基本的な使い方
 
 ```tsx
 // Server Component
-async function getUser(userId) {
-  const res = await fetch(`https://api.example.com/users/${userId}`);
-  return res.json();
-}
-
 export default async function Page({ params }) {
   // サーバーサイドでデータを取得
-  const initialUserData = await getUser(params.id);
+  const initialUserData = await fetchUser(params.id);
   
   return <UserClient userId={params.id} initialData={initialUserData} />;
 }
@@ -93,7 +96,7 @@ import { useQuery } from '@tanstack/react-query';
 function UserClient({ userId, initialData }) {
   const { data } = useQuery({
     queryKey: ['user', userId],
-    queryFn: () => getUser(userId),
+    queryFn: () => fetchUser(userId),
     initialData,
   });
   
@@ -115,7 +118,7 @@ function UserClient({ userId, initialData }) {
 - サーバーとクライアントで同じデータ取得ロジックを維持する必要があります
 - **コンポーネントの階層が深い場合、データを下層コンポーネントに渡すための「バケツリレー」が必要になります**。
 
-## AppRouter x TanstackQuery Hydration編
+## [App Router x Tanstack Query] Hydration編
 
 初期データをPropsとして渡す方法に加えて、より効率的なアプローチとして「ハイドレーション」があります。これは、サーバーサイドで取得したデータをTanStack Queryのキャッシュに直接注入し、Query Clientをダンプした文字列をHTMLに含めた(dehydrate)うえで、クライアントサイドでそれをパースし再利用する(hydrate)するものです。
 https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr
@@ -130,7 +133,7 @@ export default async function Page({ params }) {
   const queryClient = new QueryClient()
   await queryClient.prefetchQuery({
     queryKey: ['user', userId],
-    queryFn: () => fetchUserData(userId),
+    queryFn: () => fetchUser(userId),
   })
   
   return (
@@ -148,7 +151,7 @@ import { useQuery } from '@tanstack/react-query';
 export function UserClient({ userId }) {
   const { data } = useQuery({
     queryKey: ['user', userId],
-    queryFn: () => fetchUserData(userId),
+    queryFn: () => fetchUser(userId),
   });
   
   return <div>{data?.name}のプロフィール</div>;
@@ -166,7 +169,7 @@ export function UserClient({ userId }) {
 **注意点**:
 - 実装がやや複雑です
 - サーバーで取得したデータとクライアントのキャッシュの整合性を保つための工夫が必要です
-- **サーバー側とクライアント側でキャッシュキーやフェッチの実装がずれる可能性があります**。たとえば、サーバー側で使用したキャッシュキーとクライアント側で使用するキャッシュキーが異なると、同じデータに対して異なるキャッシュエントリが作成され、重複したデータ取得や意図しないUI動作の原因となります
+- **サーバー側とクライアント側でキャッシュキーやフェッチの実装がずれる可能性があります**。たとえばqueryKeyとqueryFnの組み合わせが、サーバー側とクライアント側でずれる実装ミスがあると、重複したデータ取得や意図しないUI動作の原因となります。
 - **この問題を避けるためには、次のセクションで説明するファクトリパターンが有効です**。サーバー側とクライアント側で共通のクエリ定義を使用することで、一貫性のある実装が可能になります
 
 ## うまく行うための工夫(ファクトリ)
@@ -176,13 +179,92 @@ Next.js App RouterとTanStack Queryを効果的に組み合わせるためには
 ### クエリファクトリの実装
 
 ```tsx
-// TODO
+// src/lib/queryFactory.ts
+import {
+  QueryClient,
+  QueryKey,
+  QueryFunction,
+  useQuery,
+  UseQueryOptions,
+  UseQueryResult,
+} from '@tanstack/react-query'
+
+
+export function createQueryFactory<
+  TData = unknown,
+  TError = unknown,
+  // 呼び出し側が任意個の引数を渡せるように
+  TArgs extends readonly unknown[] = readonly unknown[]
+>(
+  keyFn: (...args: TArgs) => QueryKey,
+  fn: (...args: TArgs) => Promise<TData>
+) {
+  // ↓ 呼び出し時に実体化されるクロージャ
+  return (...args: TArgs) => {
+    const queryKey = keyFn(...args)
+    const queryFn: QueryFunction<TData> = () => fn(...args)
+
+    /** サーバー用：prefetchQuery ラッパー */
+    const prefetch = (queryClient: QueryClient) =>
+      queryClient.prefetchQuery({ queryKey, queryFn })
+
+    /** クライアント用：useQuery ラッパー */
+    const use = (
+      options?: Omit<
+        UseQueryOptions<TData, TError>,
+        'queryKey' | 'queryFn'
+      >
+    ): UseQueryResult<TData, TError> =>
+      useQuery({ queryKey, queryFn, ...options })
+
+    return { queryKey, prefetch, use }
+  }
+}
+
+// src/features/user/queries.ts
+import { createQueryFactory } from '@/lib/queryFactory'
+import { fetchUser } from './api'
+
+export const fetchUserQuery = createQueryFactory(
+  (userId: string) => ['user', userId], // keyFn
+  (userId: string) => fetchUser(userId) // queryFn
+);
+
 ```
 
 ### ファクトリを使用したコンポーネント例
 
 ```tsx
-// TODO
+// app/user/[id]/page.tsx  (Server Component)
+import { QueryClient, dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { fetchUserQuery } from '@/features/user/queries'
+import UserClient from './UserClient'
+
+export default async function Page({ params }) {
+  const queryClient = new QueryClient()
+  await fetchUserQuery(params.id).prefetch(queryClient)
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      {/* Client Component 側へレンダリング */}
+      <UserClient userId={params.id} />
+    </HydrationBoundary>
+  )
+}
+
+
+// app/user/[id]/UserClient.tsx  ('use client')
+'use client'
+import { fetchUserQuery } from '@/features/user/queries'
+
+export default function UserClient({ userId }: { userId: string }) {
+  const { data, isLoading } = fetchUserQuery(userId).use({
+    staleTime: 60 * 1000,
+  })
+
+  if (isLoading) return <p>Loading...</p>
+  return <pre>{JSON.stringify(data, null, 2)}</pre>
+}
 ```
 
 ### ファクトリパターンのメリット
@@ -199,11 +281,11 @@ Next.js App RouterとTanStack Queryを組み合わせることで、高パフォ
 
 本記事では、サーバーサイドとクライアント間のデータ共有における主要な3つのアプローチを比較検討しました：
 
-| 連携パターン | 実装の複雑さ | データの効率性 | コンポーネント間共有 | 適したプロジェクト規模 |
-|-------------|------------|--------------|-----------------|-------------------|
-| initialData | 低（シンプル） | 中（バケツリレー必要） | 難しい | 小〜中規模 |
-| Hydration | 中〜高 | 高 | 容易 | 中〜大規模 |
-| ファクトリパターン | 高（初期設定） | 高 | 最適 | 中〜大規模、長期保守 |
+| 連携パターン       | 実装の複雑さ   | データの効率性         | コンポーネント間共有 | 適したプロジェクト規模 |
+| ------------------ | -------------- | ---------------------- | -------------------- | ---------------------- |
+| initialData        | 低（シンプル） | 中（バケツリレー必要） | 難しい               | 小〜中規模             |
+| Hydration          | 中〜高         | 高                     | 容易                 | 中〜大規模             |
+| ファクトリパターン | 高（初期設定） | 高                     | 最適                 | 中〜大規模、長期保守   |
 
 要点をまとめると：
 
