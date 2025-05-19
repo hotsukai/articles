@@ -13,7 +13,10 @@ Next.js App RouterとTanStack Queryの運用を続けてきて、ある程度知
 
 この記事では、Next.js App RouterとTanStack Queryを組み合わせる際の**複数の連携パターンを比較検討**し、それぞれの手法のメリット・デメリットを解説します。
 基本的なセットアップ方法については公式ドキュメントのほか、日本語記事もいくつか存在するため、そちらを参考にしてください。
-本記事では特に**サーバーサイドレンダリング（SSR）とクライアント間のデータ共有**に焦点を当て、実際のプロジェクトでどのパターンを選択すべきかの判断材料を提供します。
+https://tanstack.com/query/latest/docs/framework/react/guides/ssr
+https://zenn.dev/tor_inc/articles/aa3e6f59016327
+
+本記事では**Next.js App Router環境でのSSRとTanstack Queryの併用の具体的な実装パターン**を比較し、それぞれの最適化手法と適材適所の選択基準を提供します。
 
 ## TanStack Queryの基本的な流れ と SSR時のデフォルトの挙動
 
