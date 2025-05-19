@@ -334,6 +334,14 @@ Next.js App RouterとTanStack Queryを組み合わせることで、高パフォ
 | ファクトリパターン | 高（初期設定） | 高（一元管理・型安全性）             |
 
 Next.js App RouterとTanStack Queryの組み合わせはまだ発展途上の分野であり、ベストプラクティスが確立されている段階ではありません。
+:::details 公式ドキュメント
+https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr#data-ownership-and-revalidation
+> It's hard to give general advice on when it makes sense to pair React Query with Server Components and not. If you are just starting out with a new Server Components app, we suggest you start out with any tools for data fetching your framework provides you with and avoid bringing in React Query until you actually need it. This might be never, and that's fine, use the right tool for the job!
+
+#### GPTによる翻訳
+React QueryをServer Componentsと組み合わせるべきタイミングについて一般的なアドバイスをするのは難しいです。もし新しくServer Componentsアプリを始めたばかりなら、まずはフレームワークが提供しているデータ取得ツールを使い、React Queryを導入するのは実際に必要になった場合に限ることをお勧めします。その「必要」が訪れない場合もありますが、それでも問題ありません。適材適所でツールを使いましょう！
+
+:::
 streamingのサポートがexperimental機能として実装されるなど、今後も進化が続くことが期待されます。
 
 この記事で紹介したパターンも一例に過ぎないので、もし他の優れたプラクティスをご存知でしたら、ぜひコメントやSNSでフィードバックをいただければ幸いです。
