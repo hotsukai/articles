@@ -32,8 +32,8 @@ async function fetchUser(userId) {
   return res.json();
 }
 
-// SPAでの基本的なTanStack Queryの使用例
-function UserProfile({ userId }) {
+// useQueryを使う側のコンポーネント
+function UserClient({ userId }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
@@ -80,15 +80,18 @@ https://tanstack.com/query/latest/docs/framework/react/guides/ssr#get-started-fa
 ### initialDataの基本的な使い方
 
 ```tsx
-// Server Component
+// app/user/[id]/page.tsx  (Server Component)
 export default async function Page({ params }) {
   // サーバーサイドでデータを取得
   const initialUserData = await fetchUser(params.id);
   
+  // 取得したデータをinitialDataとしてクライアントコンポーネントにわたす
   return <UserClient userId={params.id} initialData={initialUserData} />;
 }
 
-// Client Component
+
+
+// app/user/[id]/UserClient.tsx  ('use client')
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -97,6 +100,8 @@ function UserClient({ userId, initialData }) {
   const { data } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
+    // クライアントコンポーネントでは、useQueryにinitialDataとして
+    // サーバーでFetchしたデータを渡す。
     initialData,
   });
   
@@ -125,17 +130,19 @@ https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr
 ### Hydrationの基本的な実装
 
 ```tsx
-// page.tsx
+// app/user/[id]/page.tsx  (Server Component)
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 
 export default async function Page({ params }) {
-  // サーバーサイドでデータを取得し、queryClientに設定
   const queryClient = new QueryClient()
+  // サーバーサイドでデータを取得し、queryClientにキャッシュとしてセット
   await queryClient.prefetchQuery({
-    queryKey: ['user', userId],
-    queryFn: () => fetchUser(userId),
+    queryKey: ['user', params.id],
+    queryFn: () => fetchUser(params.id),
   })
   
+  // HydrationBoundaryにdehydrateしたqueryClientを渡すことで、
+  // queryClientの内容をサーバーが返却するHTMLに含める。
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <UserClient userId={params.id} />
@@ -143,7 +150,7 @@ export default async function Page({ params }) {
   )
 }
 
-// UserClient.tsx
+// app/user/[id]/UserClient.tsx  ('use client')
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -159,7 +166,49 @@ export function UserClient({ userId }) {
 ```
 
 この実装でも、initialDataのときと同じく、SSR結果のHTMLにユーザー名が含まれます。
-
+:::details サーバーから返却されるHTMLの例。
+```html
+    <script>
+      self.__next_f.push([
+        1,
+        '2c:I["[project]/node_modules/@tanstack/react-query/build/modern/HydrationBoundary.js [app-client] (ecmascript)",["/_next/static/chunks/node_modules_%40tanstack_query-devtools_build_1e682b63._.js","/_next/static/chunks/node_modules_16c4c703._.js","/_next/static/chunks/src_lib_tanstack-query-provider_tsx_0f548fb3._.js","/_next/static/chunks/src_app_layout_tsx_c0237562._.js","/_next/static/chunks/_01053641._.js","/_next/static/chunks/src_app_sample3_users_%5BuserId%5D_page_tsx_8c082c5c._.js"],"HydrationBoundary"]\n2d:I["[project]/src/app/sample3/users/[userId]/user-client.tsx [app-client] (ecmascript)",["/_next/static/chunks/node_modules_%40tanstack_query-devtools_build_1e682b63._.js","/_next/static/chunks/node_modules_16c4c703._.js","/_next/static/chunks/src_lib_tanstack-query-provider_tsx_0f548fb3._.js","/_next/static/chunks/src_app_layout_tsx_c0237562._.js","/_next/static/chunks/_01053641._.js","/_next/static/chunks/src_app_sample3_users_%5BuserId%5D_page_tsx_8c082c5c._.js"],"default"]\nc:["$","$L2c",null,{"state":{"mutations":[],"queries":[{"state":{"data":{"id":1,"name":"user1","email":"user1@example.com","role":"admin"},"dataUpdateCount":1,"dataUpdatedAt":1747784120247,"error":null,"errorUpdateCount":0,"errorUpdatedAt":0,"fetchFailureCount":0,"fetchFailureReason":null,"fetchMeta":null,"isInvalidated":false,"status":"success","fetchStatus":"idle"},"queryKey":["user","1"],"queryHash":"[\\"user\\",\\"1\\"]"}]},"children":["$","$L2d",null,{"userId":"1"},"$d",[["Page","/Users/kaihotsu/Documents/next-tanstack/.next/server/chunks/ssr/_9ea5abc2._.js",107,270]],1]},"$d",[["Page","/Users/kaihotsu/Documents/next-tanstack/.next/server/chunks/ssr/_9ea5abc2._.js",105,263]],1]\n',
+      ]);
+    </script>
+```
+このようにqueryClientの中身が出力されている。
+```json
+{
+  "state": {
+    "mutations": [],
+    "queries": [
+      {
+        "state": {
+          "data": {
+            "id": 1,
+            "name": "user1",
+            "email": "user1@example.com",
+            "role": "admin"
+          },
+          "dataUpdateCount": 1,
+          "dataUpdatedAt": 1747784120247,
+          "error": null,
+          "errorUpdateCount": 0,
+          "errorUpdatedAt": 0,
+          "fetchFailureCount": 0,
+          "fetchFailureReason": null,
+          "fetchMeta": null,
+          "isInvalidated": false,
+          "status": "success",
+          "fetchStatus": "idle"
+        },
+        "queryKey": ["user", "1"],
+        "queryHash": "[\"user\",\"1\"]"
+      }
+    ]
+  },
+  "children":[/*略*/]
+}
+```
 ### Hydrationのメリットと注意点
 
 **メリット**:
