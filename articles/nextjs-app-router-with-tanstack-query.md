@@ -1,5 +1,5 @@
 ---
-title: "Next.js App RouterとTanStack Queryの連携の実践"
+title: "App RouterとTanStack Queryの実践プラクティス"
 emoji: "🔄"
 type: "tech"
 topics: ["nextjs", "react", "TanstackQuery", "typescript", "frontend"]
