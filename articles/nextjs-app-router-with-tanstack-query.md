@@ -314,25 +314,27 @@ export const fetchUserQuery = createQueryFactory(
 ### ファクトリを使用したコンポーネント例
 
 ```tsx
-// app/user/[id]/page.tsx  (Server Component)
+// Server Component
 import { QueryClient, dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { fetchUserQuery } from '@/features/user/queries'
 import UserClient from './UserClient'
 
 export default async function Page({ params }) {
   const queryClient = new QueryClient()
-  await fetchUserQuery(params.userId).prefetch(queryClient)
+  const userId = await params.userId;
+  await fetchUserQuery(userId).prefetch(queryClient)
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       {/* Client Component 側へレンダリング */}
-      <UserClient userId={params.userId} />
+      <UserClient userId={userId} />
     </HydrationBoundary>
   )
 }
 
 
-// app/user/[id]/UserClient.tsx  ('use client')
+
+// Client Component
 'use client'
 import { fetchUserQuery } from "./user-queries";
 export default function UserClient({ userId }) {
