@@ -239,6 +239,7 @@ export default function UserClient({ userId }) {
   "children":[/*略*/]
 }
 ```
+:::
 ### Hydrationのメリットと注意点
 
 **メリット**:
