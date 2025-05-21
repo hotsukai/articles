@@ -1,6 +1,6 @@
 ---
 title: "App RouterとTanStack Queryの実践プラクティス"
-emoji: "🔄"
+emoji: "🌸"
 type: "tech"
 topics: ["nextjs", "react", "TanstackQuery", "typescript", "frontend"]
 published: true
