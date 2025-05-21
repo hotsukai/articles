@@ -291,12 +291,12 @@ import UserClient from './UserClient'
 
 export default async function Page({ params }) {
   const queryClient = new QueryClient()
-  await fetchUserQuery(params.id).prefetch(queryClient)
+  await fetchUserQuery(params.userId).prefetch(queryClient)
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       {/* Client Component 側へレンダリング */}
-      <UserClient userId={params.id} />
+      <UserClient userId={params.userId} />
     </HydrationBoundary>
   )
 }
@@ -304,15 +304,16 @@ export default async function Page({ params }) {
 
 // app/user/[id]/UserClient.tsx  ('use client')
 'use client'
-import { fetchUserQuery } from '@/features/user/queries'
-
-export default function UserClient({ userId }: { userId: string }) {
-  const { data, isLoading } = fetchUserQuery(userId).use({
+import { fetchUserQuery } from "./user-queries";
+export default function UserClient({ userId }) {
+  const { data, isLoading, error } = fetchUserQuery(userId).use({
     staleTime: 60 * 1000,
   })
 
   if (isLoading) return <p>Loading...</p>
-  return <pre>{JSON.stringify(data, null, 2)}</pre>
+  if (error) return <div>Error: {error.message}</div>;
+
+  return <div>{data?.name}のプロフィール</div>;
 }
 ```
 
