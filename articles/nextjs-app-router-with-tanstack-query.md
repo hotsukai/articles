@@ -9,6 +9,15 @@ publication_name: sirok
 
 Next.js App RouterとTanStack Queryの運用を続けてきて、ある程度知見が溜まったのでまとめます。
 
+## TL;DR
+Next.js App RouterとTanStack Queryの連携パターンを3つ紹介します：
+- ①initialData方式（シンプルだが深い階層でバケツリレーが必要）
+- ②Hydration方式（効率的だがサーバー/クライアント間の整合性確保が課題）
+- ③ファクトリパターン（型安全で保守性高いが初期設定複雑）
+
+パフォーマンス最適化のためにはSuspenseを活用したprefetchのリフトアップと、静的/動的データの適切な使い分けが重要です。
+
+
 # Next.js App RouterとTanStack Queryの連携パターン比較
 
 この記事では、Next.js App RouterとTanStack Queryを組み合わせる際の**複数の連携パターンを比較検討**し、それぞれの手法のメリット・デメリットを解説します。
@@ -17,6 +26,9 @@ https://tanstack.com/query/latest/docs/framework/react/guides/ssr
 https://zenn.dev/tor_inc/articles/aa3e6f59016327
 
 本記事では**Next.js App Router環境でのSSRとTanstack Queryの併用の具体的な実装パターン**を比較し、それぞれの最適化手法と適材適所の選択基準を提供します。
+
+この記事のコードは以下のリポジトリで確認できます：
+https://github.com/hotsukai/nextjs-tanstackquery-sample
 
 ## TanStack Queryの基本的な流れ と SSR時のデフォルトの挙動
 
@@ -36,7 +48,7 @@ async function fetchUser(userId) {
 }
 
 // SPAでの基本的なTanStack Queryの使用例
-function UserProfile({ userId }) {
+export default function UserClient({ userId }: { userId: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
@@ -45,7 +57,7 @@ function UserProfile({ userId }) {
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
-  return <div>{data.name}のプロフィール</div>;
+  return <div>{data?.name}のプロフィール</div>;
 }
 ```
 
@@ -84,25 +96,35 @@ https://tanstack.com/query/latest/docs/framework/react/guides/ssr#get-started-fa
 
 ```tsx
 // Server Component
+import { fetchUser } from "@/lib/fetch-user";
+import UserClient from "./user-client";
+
 export default async function Page({ params }) {
+  const userId = await params.userId;
   // サーバーサイドでデータを取得
-  const initialUserData = await fetchUser(params.id);
+  const initialUserData = await fetchUser(userId);
   
-  return <UserClient userId={params.id} initialData={initialUserData} />;
+  // 取得したデータをinitialDataとしてクライアントコンポーネントにわたす
+  return <UserClient userId={userId} initialData={initialUserData} />;
 }
 
 // Client Component
-'use client';
+'use client'
 
-import { useQuery } from '@tanstack/react-query';
+import { fetchUser } from "@/lib/fetch-user";
+import { User } from "@/type";
+import { useQuery } from "@tanstack/react-query";
 
-function UserClient({ userId, initialData }) {
-  const { data } = useQuery({
+export default function UserClient({ userId, initialData }) {
+  const { data, isLoading, error } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
     initialData,
   });
-  
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
   return <div>{data.name}のプロフィール</div>;
 }
 ```
@@ -130,33 +152,43 @@ https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr
 ```tsx
 // page.tsx
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { fetchUser } from '@/lib/fetch-user'
+import { QueryClient } from '@tanstack/react-query'
+import UserClient from './user-client'
 
 export default async function Page({ params }) {
-  // サーバーサイドでデータを取得し、queryClientに設定
+  const userId = await params.userId;
   const queryClient = new QueryClient()
+  // サーバーサイドでデータを取得し、queryClientにキャッシュとしてセット
   await queryClient.prefetchQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
   })
   
+  // HydrationBoundaryにdehydrateしたqueryClientを渡すことで、
+  // queryClientの内容をサーバーが返却するHTMLに含める。
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <UserClient userId={params.id} />
+      <UserClient userId={userId} />
     </HydrationBoundary>
   )
 }
 
 // UserClient.tsx
-'use client';
+'use client'
 
-import { useQuery } from '@tanstack/react-query';
+import { fetchUser } from "@/lib/fetch-user";
+import { useQuery } from "@tanstack/react-query";
 
-export function UserClient({ userId }) {
-  const { data } = useQuery({
+export default function UserClient({ userId }) {
+  const { data, isLoading, error } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
   });
-  
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
   return <div>{data?.name}のプロフィール</div>;
 }
 ```
