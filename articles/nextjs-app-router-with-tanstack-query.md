@@ -3,7 +3,7 @@ title: "Next.js App RouterとTanStack Queryの連携の実践"
 emoji: "🔄"
 type: "tech"
 topics: ["nextjs", "react", "TanstackQuery", "typescript", "frontend"]
-published: false
+published: true
 publication_name: sirok
 ---
 
