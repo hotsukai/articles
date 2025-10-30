@@ -72,16 +72,54 @@ str          # => "HELLO"
 
 ## 2. すべてがオブジェクトである — 一貫性と充実したメソッド群
 
-Rubyでは、数値・文字列・クラス・モジュール・さらにはメソッドやブロックまでもが"オブジェクト"です。
+Rubyでは、**プリミティブ型が存在せず**、数値・文字列・クラス・モジュール・さらにはメソッドやブロックまでもが"オブジェクト"です。
 この「すべてがオブジェクト」という統一された世界観により、コードを読み書きするときの思考が一貫します。
 
-```ruby
-3.times { puts "Hello World" }
+### JavaScriptとの比較で見る違い
+
+多くの言語には「プリミティブ型」と「オブジェクト型」の区別がありますが、Rubyにはその区別がありません。
+
+**JavaScript の場合：**
+```javascript
+// プリミティブ型の数値にはメソッドがない
+const num = 5;
+console.log(typeof num);  // => "number"
+
+// メソッドを呼ぶには一時的にオブジェクトにラップされる（自動ボクシング）
+console.log(num.toString());  // => "5"
+
+// プリミティブ型自体にメソッドは追加できない
+// num.times は存在しない（エラーになる）
+
+// オブジェクト型は別物
+const numObj = new Number(5);
+console.log(typeof numObj);  // => "object"
 ```
 
-上記の例では、`3` という数値オブジェクトに対して `times` メソッドを呼び出しています。
-つまり「数値だから仕方なく特殊扱い」という感覚がありません。
-このような設計は、「オブジェクト指向を徹底した言語設計」の典型です。
+**Ruby の場合：**
+```ruby
+# すべてがオブジェクト - プリミティブ型は存在しない
+num = 5
+puts num.class  # => Integer
+
+# 数値に直接メソッドを呼び出せる
+puts num.to_s   # => "5"
+
+# 数値オブジェクトに標準で豊富なメソッドが用意されている
+num.times { puts "Hello World" }  # 5回繰り返し実行
+puts num.even?                     # => false
+puts num.next                      # => 6
+```
+
+**この違いが意味すること：**
+
+JavaScriptでは、プリミティブ型（number, string, boolean）とオブジェクト型が別物として扱われます。一方、Rubyでは **すべてがオブジェクト** であるため：
+
+- すべての値に対して統一的にメソッドを呼び出せる
+- 「数値だから仕方なく特殊扱い」という感覚がない
+- オブジェクト指向の考え方が一貫している
+
+このような設計は、Smalltalkから受け継いだ「オブジェクト指向を徹底した言語設計」の典型です。
 
 ### 充実した組み込みクラスのメソッド群
 
@@ -175,7 +213,7 @@ double = ->(x) { x * 2 }
 Rubyにおいて最も特徴的な機能のひとつが、 **メタプログラミング（metaprogramming）** が非常に使いやすいという点です。
 メタプログラミングとは、プログラム自身を実行時に定義・変更・拡張できる技術を指します。
 
-### 例：動的にメソッドを定義する
+### 例1：動的にメソッドを定義する
 
 ```ruby
 class MyClass
@@ -191,7 +229,64 @@ obj.foo(1,2)   # => "foo called with [1, 2]"
 obj.baz("hi")  # => "baz called with [\"hi\"]"
 ```
 
-このように、`define_method` や `method_missing`、`class_eval`、`module_eval` といった手段により、プログラムの構造や振る舞いを**実行時に動的に変更**することができます。
+### 例2：`send` による動的なメソッド呼び出し
+
+`send` メソッドを使うと、メソッド名を文字列やシンボルで動的に指定して実行できます：
+
+```ruby
+class Calculator
+  def add(a, b)
+    a + b
+  end
+
+  def subtract(a, b)
+    a - b
+  end
+
+  def multiply(a, b)
+    a * b
+  end
+end
+
+calc = Calculator.new
+
+# メソッド名を動的に決定して実行
+operation = :add  # ユーザー入力やデータベースから取得した値など
+result = calc.send(operation, 10, 5)  # => 15
+
+# 実用例：一括処理
+[:add, :subtract, :multiply].each do |op|
+  puts "#{op}: #{calc.send(op, 10, 5)}"
+end
+# => add: 15
+# => subtract: 5
+# => multiply: 50
+```
+
+### 例3：`try` による安全なメソッド呼び出し
+
+`try` メソッド（Rails拡張）を使うと、nilチェックを省略しながら安全にメソッドを呼び出せます：
+
+```ruby
+# try を使わない場合
+user = find_user(id)
+email = user ? user.email : nil
+upcase_email = email ? email.upcase : nil
+
+# try を使った場合（Rails）
+email = user.try(:email).try(:upcase)
+# または Ruby 2.3+ の安全なナビゲーション演算子 &.
+email = user&.email&.upcase
+
+# 実用例：配列の最初の要素のメソッドを安全に呼び出す
+users = []
+users.first&.name  # => nil（エラーにならない）
+
+users = [User.new(name: "Alice")]
+users.first&.name  # => "Alice"
+```
+
+これらのように、`send`、`try`（または `&.`）、`define_method`、`method_missing`、`class_eval`、`module_eval` といった手段により、プログラムの構造や振る舞いを**実行時に動的に変更**することができます。
 
 ### どうしてこれが"魅力"か？
 
